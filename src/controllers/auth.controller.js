@@ -1,51 +1,57 @@
-import pool from '../config/db.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { jwtConfig } from '../config/jwt.js';
+import User from '../models/user.model.js';
 
-// Admin login
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+// REGISTER funksiyasi (export so'zi borligiga e'tibor bering)
+export const register = async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        
+        // Parolni hash qilish
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-    const result = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+        const newUser = await User.create({
+            username,
+            email,
+            password: hashedPassword
+        });
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+        res.status(201).json({ success: true, data: newUser });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
-
-    const user = result.rows[0];
-
-    if (!user.is_active) {
-      return res.status(403).json({ message: 'User inactive' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign({ id: user.id, role: user.role }, jwtConfig.secret, {
-      expiresIn: jwtConfig.expiresIn
-    });
-
-    res.status(200).json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
 };
 
-// Me endpoint
-export const me = async (req, res) => {
-  res.status(200).json({ success: true, user: req.user });
+// LOGIN funksiyasi (export so'zi borligiga e'tibor bering)
+export const login = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const user = await User.findByUsername(username);
+
+        if (!user) return res.status(401).json({ message: "Username yoki parol xato" });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(401).json({ message: "Username yoki parol xato" });
+
+        const token = jwt.sign(
+            { id: user.id, role: user.role }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '24h' }
+        );
+
+        res.json({ success: true, token });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getMe = async (req, res) => {
+    try {
+        // req.user ma'lumotlari protect middleware'dan keladi
+        const user = await User.findById(req.user.id); 
+        res.status(200).json({ success: true, data: user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 };

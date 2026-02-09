@@ -1,10 +1,11 @@
-import { Router } from 'express';
-import { createTags, getAllTags } from '../controllers/tag.controller.js';
-import { authMiddleware } from '../middlewares/auth.middleware.js';
+import express from 'express';
+import { addTag, getAllTags } from '../controllers/tag.controller.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 
-const router = Router();
+const router = express.Router();
 
 router.get('/', getAllTags);
-router.post('/', authMiddleware, createTags);
+// Odatda taglarni ham Admin yoki Author qo'shishi mumkin
+router.post('/', protect, authorize('admin', 'author'), addTag);
 
 export default router;

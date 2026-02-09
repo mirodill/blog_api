@@ -1,30 +1,25 @@
-import { Router } from 'express';
+import express from 'express';
 import { 
-    createPost, 
-    getAllPosts, 
-    getPostBySlug, 
-    updatePost,  // Qo'shildi
-    deletePost, // Qo'shildi
-    getRelatedPosts
+  createPost, 
+  getPosts, 
+  getPostById, // <-- BU YERGA QO'SHILDI
+  updatePost, 
+  deletePost 
 } from '../controllers/post.controller.js';
-import { authMiddleware } from '../middlewares/auth.middleware.js';
-import { upload } from '../middlewares/upload.middleware.js';
+import { protect } from '../middlewares/auth.middleware.js';
+import upload from '../middlewares/upload.middleware.js';
 
-const router = Router();
+const router = express.Router();
 
-// --- Ommaviy yo'llar (Public) ---
-router.get('/', getAllPosts);
-router.get('/:slug', getPostBySlug);
+// 1. "/" bilan tugaydigan yo'llar
+router.route('/')
+  .get(getPosts)
+  .post(protect, upload.single('cover_image'), createPost);
 
-// --- Himoyalangan yo'llar (Private) ---
-// Post yaratish
-router.post('/', authMiddleware, upload.single('image'), createPost);
-
-// Postni yangilash (ID bo'yicha)
-router.put('/:id', authMiddleware, upload.single('image'), updatePost);
-
-// Postni o'chirish (ID bo'yicha)
-router.delete('/:id', authMiddleware, deletePost);
-router.get('/:postId/related', getRelatedPosts);
+// 2. "/:id" bilan tugaydigan yo'llar (Barchasini bitta joyga yig'dik)
+router.route('/:id')
+  .get(getPostById) // Bitta postni UUID orqali olish
+  .put(protect, upload.single('cover_image'), updatePost)
+  .delete(protect, deletePost);
 
 export default router;

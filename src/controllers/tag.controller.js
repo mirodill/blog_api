@@ -1,39 +1,36 @@
-import pool from '../config/db.js';
+import Tag from '../models/tag.model.js';
+import slugify from 'slugify';
 
-// 1. Tag yaratish (yoki massiv bo'lsa ko'p yaratish)
-export const createTags = async (req, res) => {
-    try {
-        const { names } = req.body; // ["NodeJS", "Backend"]
-        if (!names || !Array.isArray(names)) {
-            return res.status(400).json({ message: "Taglar massiv ko'rinishida bo'lishi kerak" });
-        }
+export const addTag = async (req, res) => {
+  try {
+    const { name } = req.body;
 
-        const values = [];
-        const placeholders = names.map((name, index) => {
-            const slug = name.toLowerCase().trim().replace(/[\s_-]+/g, '-');
-            values.push(name, slug);
-            return `($${index * 2 + 1}, $${index * 2 + 2})`;
-        }).join(', ');
-
-        const query = `
-            INSERT INTO tags (name, slug) 
-            VALUES ${placeholders} 
-            ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name 
-            RETURNING *`;
-        
-        const result = await pool.query(query, values);
-        res.status(201).json({ success: true, tags: result.rows });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Tag nomi kiritilmadi" });
     }
+
+    // Slugi uchun: "#NodeJS" -> "nodejs"
+    const slug = slugify(name, { lower: true, strict: true });
+
+    const newTag = await Tag.create(name, slug);
+
+    res.status(201).json({
+      success: true,
+      data: newTag
+    });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ success: false, message: "Bunday tag allaqachon mavjud" });
+    }
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-// 2. Barcha taglarni olish
 export const getAllTags = async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM tags ORDER BY name ASC');
-        res.status(200).json({ success: true, tags: result.rows });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+  try {
+    const tags = await Tag.getAll();
+    res.status(200).json({ success: true, data: tags });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
