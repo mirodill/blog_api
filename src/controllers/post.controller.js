@@ -40,6 +40,33 @@ export const getPosts = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+export const getPostBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // 1. Postni slug orqali topish
+    const post = await Post.getBySlug(slug);
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post topilmadi" });
+    }
+
+    // 2. IP manzilni olish (Unique view uchun)
+    const ipAddress = req.headers['x-forwarded-for'] || 
+                      req.socket.remoteAddress || 
+                      req.ip;
+
+    // 3. Ko'rishlar sonini oshirish (Postning haqiqiy UUID id-si ishlatiladi)
+    await Post.trackUniqueView(post.id, ipAddress);
+
+    res.status(200).json({
+      success: true,
+      data: post
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 export const getPostById = async (req, res) => {
   try {
     const { id } = req.params;

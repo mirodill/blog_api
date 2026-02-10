@@ -104,6 +104,24 @@ class Post {
   const { rows } = await pool.query(query, queryParams);
   return rows;
 }
+static async getBySlug(slug) {
+  const query = `
+    SELECT p.*, 
+      json_agg(DISTINCT c.name) as categories, 
+      json_agg(DISTINCT t.name) as tags,
+      s.views_count, s.likes_count
+    FROM posts p
+    LEFT JOIN post_categories pc ON p.id = pc.post_id
+    LEFT JOIN categories c ON pc.category_id = c.id
+    LEFT JOIN post_tags pt ON p.id = pt.post_id
+    LEFT JOIN tags t ON pt.tag_id = t.id
+    LEFT JOIN post_stats s ON p.id = s.post_id
+    WHERE p.slug = $1 AND p.deleted_at IS NULL
+    GROUP BY p.id, s.views_count, s.likes_count`;
+  
+  const { rows } = await pool.query(query, [slug]);
+  return rows[0];
+}
 static async getById(id) {
     const query = `
       SELECT p.*, 
