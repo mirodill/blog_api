@@ -1,24 +1,26 @@
-// ... boshqa importlar
+import express from 'express';
 import { 
   createPost, 
   getPosts, 
   getPostById, 
-  getPostBySlug, // <-- YANGI FUNKSIYANI IMPORT QILING
+  getPostBySlug, // Agar slug funksiyasini qo'shgan bo'lsangiz
   updatePost, 
   deletePost 
 } from '../controllers/post.controller.js';
+import { protect } from '../middlewares/auth.middleware.js';
+import upload from '../middlewares/upload.middleware.js';
 
 const router = express.Router();
 
-// Slug orqali olish (/:id bilan adashtirib yubormaslik uchun /get/slug/ ko'rinishi xavfsiz)
-router.get('/slug/:slug', getPostBySlug); 
-
+// 1. "/" bilan tugaydigan yo'llar
 router.route('/')
   .get(getPosts)
   .post(protect, upload.single('cover_image'), createPost);
 
+// 2. "/:id" bilan tugaydigan yo'llar (Barchasini bitta joyga yig'dik)
+router.get('/slug/:slug', getPostBySlug);
 router.route('/:id')
-  .get(getPostById)
+  .get(getPostById) // Bitta postni UUID orqali olish
   .put(protect, upload.single('cover_image'), updatePost)
   .delete(protect, deletePost);
 
