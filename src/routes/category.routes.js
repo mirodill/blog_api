@@ -1,10 +1,19 @@
 import express from 'express';
-import { addCategory, getAllCategories } from '../controllers/category.controller.js';
+import { 
+  addCategory, 
+  getAllCategories, 
+  updateCategory, 
+  deleteCategory 
+} from '../controllers/category.controller.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-router.get('/', getAllCategories); // Hamma ko'ra oladi
-router.post('/', protect, authorize('admin'), addCategory); // Faqat admin qo'sha oladi
+router.get('/', getAllCategories);
+router.post('/', protect, authorize('admin'), addCategory);
+
+// Yangi qo'shilgan endpointlar:
+router.put('/:id', protect, authorize('admin'), updateCategory);    // Tahrirlash
+router.delete('/:id', protect, authorize('admin'), deleteCategory); // O'chirish
 
 export default router;
