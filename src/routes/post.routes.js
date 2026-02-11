@@ -3,7 +3,7 @@ import {
   createPost, 
   getPosts, 
   getPostById, 
-  getPostBySlug, // Agar slug funksiyasini qo'shgan bo'lsangiz
+  getPostBySlug, 
   updatePost, 
   deletePost 
 } from '../controllers/post.controller.js';
@@ -12,15 +12,38 @@ import upload from '../middlewares/upload.middleware.js';
 
 const router = express.Router();
 
-// 1. "/" bilan tugaydigan yo'llar
+/**
+ * @route   GET /api/posts
+ * @desc    Barcha postlarni olish (Filtrlar bilan: category, tag)
+ */
+/**
+ * @route   POST /api/posts
+ * @desc    Yangi post yaratish (Base64 rasm bilan)
+ */
 router.route('/')
   .get(getPosts)
   .post(protect, upload.single('cover_image'), createPost);
 
-// 2. "/:id" bilan tugaydigan yo'llar (Barchasini bitta joyga yig'dik)
+/**
+ * @route   GET /api/posts/slug/:slug
+ * @desc    Postni slug orqali olish va ko'rishlar sonini oshirish
+ */
 router.get('/slug/:slug', getPostBySlug);
+
+/**
+ * @route   GET /api/posts/:id
+ * @desc    Postni UUID orqali olish
+ */
+/**
+ * @route   PUT /api/posts/:id
+ * @desc    Postni tahrirlash (Rasm yangilanishi mumkin)
+ */
+/**
+ * @route   DELETE /api/posts/:id
+ * @desc    Postni o'chirish
+ */
 router.route('/:id')
-  .get(getPostById) // Bitta postni UUID orqali olish
+  .get(getPostById)
   .put(protect, upload.single('cover_image'), updatePost)
   .delete(protect, deletePost);
 
