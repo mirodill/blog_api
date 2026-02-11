@@ -32,7 +32,8 @@ app.use(cors({
   credentials: true 
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); 
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // 3. Static papka (Rasmlar uchun)
 // Agar uploads papkasi loyihaning ildiz (root) papkasida bo'lsa:
