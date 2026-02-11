@@ -6,13 +6,7 @@ dotenv.config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Neon uchun bu juda muhim
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
-pool.on('connect', () => {
-  console.log("🐘 Neon PostgreSQL-ga muvaffaqiyatli ulandi!");
-});
-
-export default pool;
+export default pool; // Faqat bitta export default
