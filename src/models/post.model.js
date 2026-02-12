@@ -105,41 +105,44 @@ static async getAll(filters = {}) {
   }
 
 static async getBySlug(slug) {
-    const query = `
-      SELECT p.*, 
-        json_agg(DISTINCT c.name) as categories, 
-        json_agg(DISTINCT t.name) as tags,
-        u.full_name as author_name, u.avatar as author_avatar
-      FROM posts p
-      LEFT JOIN post_categories pc ON p.id = pc.post_id
-      LEFT JOIN categories c ON pc.category_id = c.id
-      LEFT JOIN post_tags pt ON p.id = pt.post_id
-      LEFT JOIN tags t ON pt.tag_id = t.id
-      LEFT JOIN users u ON p.author_id = u.id
-      WHERE p.slug = $1 AND p.deleted_at IS NULL
-      GROUP BY p.id, u.full_name, u.avatar`;
-    
-    const { rows } = await pool.query(query, [slug]);
-    return rows[0];
-  }
+  const query = `
+    SELECT p.*, 
+      json_agg(DISTINCT c.name) as categories, 
+      json_agg(DISTINCT t.name) as tags,
+      u.full_name as author_name, 
+      u.avatar as author_avatar
+    FROM posts p
+    LEFT JOIN post_categories pc ON p.id = pc.post_id
+    LEFT JOIN categories c ON pc.category_id = c.id
+    LEFT JOIN post_tags pt ON p.id = pt.post_id
+    LEFT JOIN tags t ON pt.tag_id = t.id
+    LEFT JOIN users u ON p.author_id = u.id
+    WHERE p.slug = $1 AND p.deleted_at IS NULL
+    GROUP BY p.id, u.full_name, u.avatar`;
+  
+  const { rows } = await pool.query(query, [slug]);
+  return rows[0];
+}
+
 static async getById(id) {
-    const query = `
-      SELECT p.*, 
-        json_agg(DISTINCT c.name) as categories, 
-        json_agg(DISTINCT t.name) as tags,
-        s.views_count, s.likes_count
-      FROM posts p
-      LEFT JOIN post_categories pc ON p.id = pc.post_id
-      LEFT JOIN categories c ON pc.category_id = c.id
-      LEFT JOIN post_tags pt ON p.id = pt.post_id
-      LEFT JOIN tags t ON pt.tag_id = t.id
-      LEFT JOIN post_stats s ON p.id = s.post_id
-      WHERE p.id = $1 AND p.deleted_at IS NULL
-      GROUP BY p.id, s.views_count, s.likes_count`;
-    
-    const { rows } = await pool.query(query, [id]);
-    return rows[0];
-  }
+  const query = `
+    SELECT p.*, 
+      json_agg(DISTINCT c.name) as categories, 
+      json_agg(DISTINCT t.name) as tags,
+      u.full_name as author_name, 
+      u.avatar as author_avatar
+    FROM posts p
+    LEFT JOIN post_categories pc ON p.id = pc.post_id
+    LEFT JOIN categories c ON pc.category_id = c.id
+    LEFT JOIN post_tags pt ON p.id = pt.post_id
+    LEFT JOIN tags t ON pt.tag_id = t.id
+    LEFT JOIN users u ON p.author_id = u.id
+    WHERE p.id = $1 AND p.deleted_at IS NULL
+    GROUP BY p.id, u.full_name, u.avatar`;
+  
+  const { rows } = await pool.query(query, [id]);
+  return rows[0];
+}
   // 3. UPDATE
   static async update(id, { title, content, status, cover_image, categories, tags }) {
     const client = await pool.connect();
