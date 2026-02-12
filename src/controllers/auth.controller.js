@@ -110,25 +110,17 @@ export const getMe = async (req, res) => {
 };
 export const updateProfile = async (req, res) => {
   try {
-    const { username, bio, avatar } = req.body;
+    const { username, full_name, bio, avatar } = req.body; // full_name qo'shildi
 
-    // req.user.id "protect" middleware-dan keladi
     const updatedUser = await User.update(req.user.id, { 
       username, 
+      full_name, // modelga ketdi
       bio, 
-      avatar // Bu yerga Base64 matni keladi
+      avatar 
     });
 
-    if (!updatedUser) {
-      return res.status(404).json({ success: false, message: "User topilmadi" });
-    }
-
-    res.status(200).json({ 
-      success: true, 
-      data: updatedUser 
-    });
+    res.status(200).json({ success: true, data: updatedUser });
   } catch (error) {
-    console.error("Update Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

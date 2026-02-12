@@ -17,11 +17,7 @@ class User {
     return rows[0];
   }
 
-  static async findById(id) {
-    const query = `SELECT id, username, email, role, avatar, bio, created_at FROM users WHERE id = $1`;
-    const { rows } = await pool.query(query, [id]);
-    return rows[0];
-}
+
 static async update(id, { username, full_name, bio, avatar }) {
   const query = `
     UPDATE users 
@@ -30,6 +26,12 @@ static async update(id, { username, full_name, bio, avatar }) {
     RETURNING id, username, full_name, email, role, bio, avatar`;
   
   const { rows } = await pool.query(query, [username, full_name, bio, avatar, id]);
+  return rows[0];
+}
+static async findById(id) {
+  // Profilni yuklaganda full_name ham kelsin
+  const query = `SELECT id, username, full_name, email, role, bio, avatar FROM users WHERE id = $1`;
+  const { rows } = await pool.query(query, [id]);
   return rows[0];
 }
 }
