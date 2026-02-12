@@ -22,13 +22,14 @@ class User {
     const { rows } = await pool.query(query, [id]);
     return rows[0];
 }
-static async update(id, { username, bio, avatar }) {
+static async update(id, { username, full_name, bio, avatar }) {
   const query = `
     UPDATE users 
-    SET username = $1, bio = $2, avatar = $3 
-    WHERE id = $4 
-    RETURNING id, username, email, role, bio, avatar`;
-  const { rows } = await pool.query(query, [username, bio, avatar, id]);
+    SET username = $1, full_name = $2, bio = $3, avatar = $4, updated_at = NOW()
+    WHERE id = $5 
+    RETURNING id, username, full_name, email, role, bio, avatar`;
+  
+  const { rows } = await pool.query(query, [username, full_name, bio, avatar, id]);
   return rows[0];
 }
 }
