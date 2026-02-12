@@ -39,34 +39,50 @@ class Post {
     }
   }
   // 1. CREATE
- static async create({ author_id, title, slug, content, status, cover_image, categories, tags }) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const postRes = await client.query(
-        `INSERT INTO posts (author_id, title, slug, content, status, cover_image) 
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [author_id, title, slug, content, status, cover_image]
-      );
-      const postId = postRes.rows[0].id;
+ // Post.create metodi ichidagi o'zgarish:
+static async create({ author_id, title, slug, content, status, cover_image, categories, tags }) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-      if (categories?.length) {
-        for (const catId of categories) {
-          await client.query('INSERT INTO post_categories (post_id, category_id) VALUES ($1, $2)', [postId, catId]);
-        }
+    // 1. Postni yaratish
+    const postRes = await client.query(
+      `INSERT INTO posts (author_id, title, slug, content, status, cover_image) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [author_id, title, slug, content, status, cover_image]
+    );
+    const postId = postRes.rows[0].id;
+
+    // 2. Kategoriyalarni bog'lash
+    if (categories?.length) {
+      for (const catId of categories) {
+        await client.query('INSERT INTO post_categories (post_id, category_id) VALUES ($1, $2)', [postId, catId]);
       }
-      if (tags?.length) {
-        for (const tagId of tags) {
-          await client.query('INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)', [postId, tagId]);
-        }
+    }
+
+    // 3. TEGLARNI ISHLASH (Find or Create Many)
+    if (tags?.length) {
+      // Teg nomlarini yuborib, ularning ID larini olamiz
+      const Tag = (await import('./tag.model.js')).default; // Sirkulyar importni oldini olish
+      const tagIds = await Tag.findOrCreateMany(tags);
+
+      for (const tagId of tagIds) {
+        await client.query(
+          'INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', 
+          [postId, tagId]
+        );
       }
-      await client.query('COMMIT');
-      return postId;
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally { client.release(); }
+    }
+
+    await client.query('COMMIT');
+    return postId;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
   }
+}
 
   // 2. READ (ALL)
 static async getAll(filters = {}) {
