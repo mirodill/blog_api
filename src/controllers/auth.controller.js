@@ -111,22 +111,24 @@ export const getMe = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { username, bio, avatar } = req.body;
-    
-    // User modelidagi update metodini chaqiramiz
-    // req.user.id bizga "protect" middleware-dan keladi
-    const updatedUser = await User.update(req.user.id, { username, bio, avatar });
-    
+
+    // req.user.id "protect" middleware-dan keladi
+    const updatedUser = await User.update(req.user.id, { 
+      username, 
+      bio, 
+      avatar // Bu yerga Base64 matni keladi
+    });
+
     if (!updatedUser) {
-      return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
+      return res.status(404).json({ success: false, message: "User topilmadi" });
     }
 
     res.status(200).json({ 
       success: true, 
-      message: "Profil muvaffaqiyatli yangilandi",
       data: updatedUser 
     });
   } catch (error) {
-    console.error("Update Profile Error:", error);
+    console.error("Update Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
