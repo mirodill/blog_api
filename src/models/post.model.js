@@ -121,7 +121,7 @@ class Post {
       await client.query('BEGIN');
 
       // Kontent o'zgargani uchun vaqtni qayta hisoblaymiz
-      const readingTime = calculateReadingTime(content);
+      const readingTime = calculateComplexReadingTime(content);
 
       await client.query(
         `UPDATE posts 
