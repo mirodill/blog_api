@@ -1,12 +1,12 @@
 import pool from '../config/db.js';
 
 class Post {
-  static async trackUniqueView(postId, ipAddress) {
+ static async trackUniqueView(postId, ipAddress) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      // Oxirgi 24 soat ichida shu IP-dan ushbu post ko'rilganmi?
+      // post_views jadvali hali ham kerak (unique IP larni tekshirish uchun)
       const checkQuery = `
         SELECT id FROM post_views 
         WHERE post_id = $1 AND ip_address = $2 
@@ -15,14 +15,14 @@ class Post {
       const { rows } = await client.query(checkQuery, [postId, ipAddress]);
 
       if (rows.length === 0) {
-        // Yangi ko'rish: post_views ga IP-ni yozamiz
         await client.query(
           'INSERT INTO post_views (post_id, ip_address) VALUES ($1, $2)',
           [postId, ipAddress]
         );
-        // post_stats jadvalidagi views_count ni +1 qilamiz
+        
+        // ENDI UPDATE TO'G'RIDAN-TO'G'RI posts JADVALIGA QILINADI
         await client.query(
-          'UPDATE post_stats SET views_count = views_count + 1 WHERE post_id = $1',
+          'UPDATE posts SET views_count = views_count + 1 WHERE id = $1',
           [postId]
         );
         await client.query('COMMIT');
@@ -30,7 +30,7 @@ class Post {
       }
       
       await client.query('COMMIT');
-      return false; // Allaqachon ko'rilgan
+      return false;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -39,7 +39,7 @@ class Post {
     }
   }
   // 1. CREATE
-  static async create({ author_id, title, slug, content, status, cover_image, categories, tags }) {
+ static async create({ author_id, title, slug, content, status, cover_image, categories, tags }) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -69,59 +69,59 @@ class Post {
   }
 
   // 2. READ (ALL)
-  static async getAll(filters = {}) {
-  const { categoryId, tagId } = filters;
-  let queryParams = [];
-  let whereClauses = ['p.deleted_at IS NULL'];
+static async getAll(filters = {}) {
+    const { categoryId, tagId } = filters;
+    let queryParams = [];
+    let whereClauses = ['p.deleted_at IS NULL'];
 
-  // Agar kategoriya bo'yicha filter bo'lsa
-  if (categoryId) {
-    queryParams.push(categoryId);
-    whereClauses.push(`pc.category_id = $${queryParams.length}`);
+    if (categoryId) {
+      queryParams.push(categoryId);
+      whereClauses.push(`pc.category_id = $${queryParams.length}`);
+    }
+
+    if (tagId) {
+      queryParams.push(tagId);
+      whereClauses.push(`pt.tag_id = $${queryParams.length}`);
+    }
+
+    // s.views_count olib tashlandi, o'rniga p.views_count ishlatiladi
+    const query = `
+      SELECT p.*, 
+        json_agg(DISTINCT c.name) as categories, 
+        json_agg(DISTINCT t.name) as tags,
+        u.full_name as author_name, u.avatar as author_avatar
+      FROM posts p
+      LEFT JOIN post_categories pc ON p.id = pc.post_id
+      LEFT JOIN categories c ON pc.category_id = c.id
+      LEFT JOIN post_tags pt ON p.id = pt.post_id
+      LEFT JOIN tags t ON pt.tag_id = t.id
+      LEFT JOIN users u ON p.author_id = u.id
+      WHERE ${whereClauses.join(' AND ')}
+      GROUP BY p.id, u.full_name, u.avatar
+      ORDER BY p.created_at DESC`;
+
+    const { rows } = await pool.query(query, queryParams);
+    return rows;
   }
 
-  // Agar tag bo'yicha filter bo'lsa
-  if (tagId) {
-    queryParams.push(tagId);
-    whereClauses.push(`pt.tag_id = $${queryParams.length}`);
-  }
-
-  const query = `
-    SELECT p.*, 
-      json_agg(DISTINCT c.name) as categories, 
-      json_agg(DISTINCT t.name) as tags,
-      s.views_count, s.likes_count
-    FROM posts p
-    LEFT JOIN post_categories pc ON p.id = pc.post_id
-    LEFT JOIN categories c ON pc.category_id = c.id
-    LEFT JOIN post_tags pt ON p.id = pt.post_id
-    LEFT JOIN tags t ON pt.tag_id = t.id
-    LEFT JOIN post_stats s ON p.id = s.post_id
-    WHERE ${whereClauses.join(' AND ')}
-    GROUP BY p.id, s.views_count, s.likes_count
-    ORDER BY p.created_at DESC`;
-
-  const { rows } = await pool.query(query, queryParams);
-  return rows;
-}
 static async getBySlug(slug) {
-  const query = `
-    SELECT p.*, 
-      json_agg(DISTINCT c.name) as categories, 
-      json_agg(DISTINCT t.name) as tags,
-      s.views_count, s.likes_count
-    FROM posts p
-    LEFT JOIN post_categories pc ON p.id = pc.post_id
-    LEFT JOIN categories c ON pc.category_id = c.id
-    LEFT JOIN post_tags pt ON p.id = pt.post_id
-    LEFT JOIN tags t ON pt.tag_id = t.id
-    LEFT JOIN post_stats s ON p.id = s.post_id
-    WHERE p.slug = $1 AND p.deleted_at IS NULL
-    GROUP BY p.id, s.views_count, s.likes_count`;
-  
-  const { rows } = await pool.query(query, [slug]);
-  return rows[0];
-}
+    const query = `
+      SELECT p.*, 
+        json_agg(DISTINCT c.name) as categories, 
+        json_agg(DISTINCT t.name) as tags,
+        u.full_name as author_name, u.avatar as author_avatar
+      FROM posts p
+      LEFT JOIN post_categories pc ON p.id = pc.post_id
+      LEFT JOIN categories c ON pc.category_id = c.id
+      LEFT JOIN post_tags pt ON p.id = pt.post_id
+      LEFT JOIN tags t ON pt.tag_id = t.id
+      LEFT JOIN users u ON p.author_id = u.id
+      WHERE p.slug = $1 AND p.deleted_at IS NULL
+      GROUP BY p.id, u.full_name, u.avatar`;
+    
+    const { rows } = await pool.query(query, [slug]);
+    return rows[0];
+  }
 static async getById(id) {
     const query = `
       SELECT p.*, 
