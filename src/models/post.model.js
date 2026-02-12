@@ -160,27 +160,54 @@ static async getById(id) {
   return rows[0];
 }
   // 3. UPDATE
-  static async update(id, { title, content, status, cover_image, categories, tags }) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(
-        `UPDATE posts SET title = $1, content = $2, status = $3, cover_image = COALESCE($4, cover_image), updated_at = NOW() WHERE id = $5`,
-        [title, content, status, cover_image, id]
-      );
+ static async update(id, { title, content, status, cover_image, categories, tags }) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-      if (categories) {
-        await client.query('DELETE FROM post_categories WHERE post_id = $1', [id]);
-        for (const catId of categories) {
-          await client.query('INSERT INTO post_categories (post_id, category_id) VALUES ($1, $2)', [id, catId]);
+    // 1. Asosiy ma'lumotlarni yangilash
+    await client.query(
+      `UPDATE posts 
+       SET title = $1, content = $2, status = $3, cover_image = COALESCE($4, cover_image), updated_at = NOW() 
+       WHERE id = $5`,
+      [title, content, status, cover_image, id]
+    );
+
+    // 2. Kategoriyalarni yangilash (Eskisini o'chirib, yangisini yozish)
+    if (categories) {
+      await client.query('DELETE FROM post_categories WHERE post_id = $1', [id]);
+      for (const catId of categories) {
+        await client.query('INSERT INTO post_categories (post_id, category_id) VALUES ($1, $2)', [id, catId]);
+      }
+    }
+
+    // 3. TEGLARNI YANGILASH (Eng muhim qismi)
+    if (tags) {
+      // Avval ushbu postga tegishli barcha eski bog'liqliklarni o'chiramiz
+      await client.query('DELETE FROM post_tags WHERE post_id = $1', [id]);
+
+      if (tags.length > 0) {
+        // Tag modeli orqali yangi teglarni find-or-create qilamiz
+        const Tag = (await import('./tag.model.js')).default;
+        const tagIds = await Tag.findOrCreateMany(tags);
+
+        for (const tagId of tagIds) {
+          await client.query(
+            'INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', 
+            [id, tagId]
+          );
         }
       }
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally { client.release(); }
+    }
+
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
   }
+}
 
   // 4. DELETE (Soft Delete)
   static async delete(id) {

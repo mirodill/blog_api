@@ -38,25 +38,22 @@ export const createPost = async (req, res) => {
 export const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    let updateData = { ...req.body };
-    
-    // Agar yangi cover_image kelsa, u req.body ichida bo'ladi
-    // Multer (req.file) ishlatilmaydi, shuning uchun qo'shimcha o'girish shart emas
+    let { title, content, status, categories, tags, cover_image } = req.body;
 
-    if (updateData.categories) {
-      updateData.categories = typeof updateData.categories === 'string' 
-        ? JSON.parse(updateData.categories) 
-        : updateData.categories;
-    }
+    // Frontenddan JSON string bo'lib kelsa massivga o'girish
+    const categoryIds = typeof categories === 'string' ? JSON.parse(categories) : categories;
+    const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
 
-    if (updateData.tags) {
-      updateData.tags = typeof updateData.tags === 'string' 
-        ? JSON.parse(updateData.tags) 
-        : updateData.tags;
-    }
-    
-    await Post.update(id, updateData);
-    res.json({ success: true, message: "Post yangilandi" });
+    await Post.update(id, {
+      title,
+      content,
+      status,
+      cover_image,
+      categories: categoryIds,
+      tags: tagArray // Endi bu massiv modelga boradi
+    });
+
+    res.json({ success: true, message: "Post va teglar yangilandi" });
   } catch (error) {
     console.error("Update Post Error:", error);
     res.status(500).json({ success: false, message: error.message });
