@@ -38,7 +38,21 @@ export const protect = (req, res, next) => {
         });
     }
 };
-
+export const updateProfile = async (req, res) => {
+  try {
+    const { username, bio, avatar } = req.body;
+    // req.user.id "protect" middleware-dan keladi
+    const updatedUser = await User.update(req.user.id, { username, bio, avatar });
+    
+    res.status(200).json({ 
+      success: true, 
+      message: "Profil yangilandi", 
+      data: updatedUser 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 /**
  * @desc    Rollar bo'yicha ruxsatni cheklash (RBAC)
  */

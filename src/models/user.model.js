@@ -22,6 +22,15 @@ class User {
     const { rows } = await pool.query(query, [id]);
     return rows[0];
 }
+static async update(id, { username, bio, avatar }) {
+  const query = `
+    UPDATE users 
+    SET username = $1, bio = $2, avatar = $3 
+    WHERE id = $4 
+    RETURNING id, username, email, role, bio, avatar`;
+  const { rows } = await pool.query(query, [username, bio, avatar, id]);
+  return rows[0];
+}
 }
 
 export default User;

@@ -1,6 +1,6 @@
 import express from 'express';
-import { register, login } from '../controllers/auth.controller.js';
-
+import { register, login, getMe, updateProfile } from '../controllers/auth.controller.js';
+import { protect } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
 /**
@@ -8,6 +8,8 @@ const router = express.Router();
  * @desc    Yangi foydalanuvchi (yoki admin) yaratish
  * @access  Public
  */
+router.get('/me', protect, getMe);
+router.put('/update', protect, updateProfile);
 router.post('/register', register);
 
 /**
