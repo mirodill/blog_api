@@ -4,27 +4,22 @@ import slugify from 'slugify';
 // POST yaratish
 export const createPost = async (req, res) => {
   try {
-    // Diqqat: cover_image endi to'g'ridan-to'g'ri req.body ichidan keladi
     let { title, content, status, categories, tags, cover_image } = req.body;
-    
-    // 1. Slug yaratish
     const slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
 
-    // 2. Kategoriyalar va Teglarni massivga o'tkazish
-    // Frontenddan JSON string bo'lib kelsa, obyektga o'giramiz
-    const categoryIds = typeof categories === 'string' ? JSON.parse(categories) : categories;
-    const tagIds = typeof tags === 'string' ? JSON.parse(tags) : tags;
+    // Frontenddan massiv kelayotganiga ishonch hosil qilish
+    const categoryIds = Array.isArray(categories) ? categories : [];
+    const tagNames = Array.isArray(tags) ? tags : [];
 
-    // 3. Model orqali bazaga saqlash
     const postId = await Post.create({
       author_id: req.user.id, 
       title, 
       slug, 
       content, 
       status, 
-      cover_image, // Frontend'dan kelgan "data:image...base64" kodi
+      cover_image, 
       categories: categoryIds, 
-      tags: tagIds
+      tags: tagNames
     });
 
     res.status(201).json({ success: true, postId });

@@ -1,7 +1,6 @@
 import pool from '../config/db.js';
-import { calculateComplexReadingTime } from '../utils/readingTime.js';
-
-// ... calculateReadingTime funksiyasi shu yerda bo'ladi ...
+// Nomni kodingizga moslab import qilamiz
+import { calculateComplexReadingTime as calculateReadingTime } from '../utils/readingTime.js';
 
 class Post {
   static async trackUniqueView(postId, ipAddress) {
@@ -36,14 +35,14 @@ class Post {
     }
   }
 
-  // 1. CREATE (reading_time qo'shildi)
+  // 1. CREATE
   static async create({ author_id, title, slug, content, status, cover_image, categories, tags }) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      // O'qish vaqtini hisoblash
-      const readingTime = calculateReadingTime(content);
+      // Endi bu yerda xato bo'lmaydi
+      const readingTime = calculateReadingTime(content || "");
 
       const postRes = await client.query(
         `INSERT INTO posts (author_id, title, slug, content, status, cover_image, reading_time) 
@@ -79,49 +78,13 @@ class Post {
     }
   }
 
-  // 2. READ ALL (reading_time select qiladi)
-  static async getAll(filters = {}) {
-    const { categoryId, tagId } = filters;
-    let queryParams = [];
-    let whereClauses = ['p.deleted_at IS NULL'];
-
-    if (categoryId) {
-      queryParams.push(categoryId);
-      whereClauses.push(`pc.category_id = $${queryParams.length}`);
-    }
-
-    if (tagId) {
-      queryParams.push(tagId);
-      whereClauses.push(`pt.tag_id = $${queryParams.length}`);
-    }
-
-    const query = `
-      SELECT p.*, 
-        json_agg(DISTINCT c.name) as categories, 
-        json_agg(DISTINCT t.name) as tags,
-        u.full_name as author_name, u.avatar as author_avatar
-      FROM posts p
-      LEFT JOIN post_categories pc ON p.id = pc.post_id
-      LEFT JOIN categories c ON pc.category_id = c.id
-      LEFT JOIN post_tags pt ON p.id = pt.post_id
-      LEFT JOIN tags t ON pt.tag_id = t.id
-      LEFT JOIN users u ON p.author_id = u.id
-      WHERE ${whereClauses.join(' AND ')}
-      GROUP BY p.id, u.full_name, u.avatar
-      ORDER BY p.created_at DESC`;
-
-    const { rows } = await pool.query(query, queryParams);
-    return rows;
-  }
-
-  // 3. UPDATE (reading_time yangilanadi)
+  // 2. UPDATE
   static async update(id, { title, content, status, cover_image, categories, tags }) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      // Kontent o'zgargani uchun vaqtni qayta hisoblaymiz
-      const readingTime = calculateComplexReadingTime(content);
+      const readingTime = calculateReadingTime(content || "");
 
       await client.query(
         `UPDATE posts 
@@ -161,7 +124,14 @@ class Post {
     }
   }
 
-  static async getBySlug(slug) {
+  // 3. READ ALL, GET BY SLUG, GET BY ID, DELETE (O'zgarishsiz qoladi)
+  static async getAll(filters = {}) {
+    const { categoryId, tagId } = filters;
+    let queryParams = [];
+    let whereClauses = ['p.deleted_at IS NULL'];
+    if (categoryId) { queryParams.push(categoryId); whereClauses.push(`pc.category_id = $${queryParams.length}`); }
+    if (tagId) { queryParams.push(tagId); whereClauses.push(`pt.tag_id = $${queryParams.length}`); }
+
     const query = `
       SELECT p.*, 
         json_agg(DISTINCT c.name) as categories, 
@@ -173,28 +143,37 @@ class Post {
       LEFT JOIN post_tags pt ON p.id = pt.post_id
       LEFT JOIN tags t ON pt.tag_id = t.id
       LEFT JOIN users u ON p.author_id = u.id
-      WHERE p.slug = $1 AND p.deleted_at IS NULL
-      GROUP BY p.id, u.full_name, u.avatar`;
-    
+      WHERE ${whereClauses.join(' AND ')}
+      GROUP BY p.id, u.full_name, u.avatar
+      ORDER BY p.created_at DESC`;
+    const { rows } = await pool.query(query, queryParams);
+    return rows;
+  }
+
+  static async getBySlug(slug) {
+    const query = `
+      SELECT p.*, json_agg(DISTINCT c.name) as categories, json_agg(DISTINCT t.name) as tags,
+        u.full_name as author_name, u.avatar as author_avatar FROM posts p
+      LEFT JOIN post_categories pc ON p.id = pc.post_id
+      LEFT JOIN categories c ON pc.category_id = c.id
+      LEFT JOIN post_tags pt ON p.id = pt.post_id
+      LEFT JOIN tags t ON pt.tag_id = t.id
+      LEFT JOIN users u ON p.author_id = u.id
+      WHERE p.slug = $1 AND p.deleted_at IS NULL GROUP BY p.id, u.full_name, u.avatar`;
     const { rows } = await pool.query(query, [slug]);
     return rows[0];
   }
 
   static async getById(id) {
     const query = `
-      SELECT p.*, 
-        json_agg(DISTINCT c.name) as categories, 
-        json_agg(DISTINCT t.name) as tags,
-        u.full_name as author_name, u.avatar as author_avatar
-      FROM posts p
+      SELECT p.*, json_agg(DISTINCT c.name) as categories, json_agg(DISTINCT t.name) as tags,
+        u.full_name as author_name, u.avatar as author_avatar FROM posts p
       LEFT JOIN post_categories pc ON p.id = pc.post_id
       LEFT JOIN categories c ON pc.category_id = c.id
       LEFT JOIN post_tags pt ON p.id = pt.post_id
       LEFT JOIN tags t ON pt.tag_id = t.id
       LEFT JOIN users u ON p.author_id = u.id
-      WHERE p.id = $1 AND p.deleted_at IS NULL
-      GROUP BY p.id, u.full_name, u.avatar`;
-    
+      WHERE p.id = $1 AND p.deleted_at IS NULL GROUP BY p.id, u.full_name, u.avatar`;
     const { rows } = await pool.query(query, [id]);
     return rows[0];
   }
