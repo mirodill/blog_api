@@ -35,20 +35,30 @@ export const updatePost = async (req, res) => {
     const { id } = req.params;
     let { title, content, status, categories, tags, cover_image } = req.body;
 
+    // 1. Yangi slug yaratish (Title o'zgargan bo'lsa)
+    const newSlug = slugify(title, { lower: true, strict: true });
+
     // Frontenddan JSON string bo'lib kelsa massivga o'girish
     const categoryIds = typeof categories === 'string' ? JSON.parse(categories) : categories;
     const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
 
+    // 2. Bazada slugni ham yangilash
     await Post.update(id, {
       title,
+      slug: newSlug, // SHU YERDA SLUGNI HAM YANGILASH KERAK
       content,
       status,
       cover_image,
       categories: categoryIds,
-      tags: tagArray // Endi bu massiv modelga boradi
+      tags: tagArray 
     });
 
-    res.json({ success: true, message: "Post va teglar yangilandi" });
+    // 3. Frontendga yangi slugni qaytarish (muhim!)
+    res.json({ 
+      success: true, 
+      message: "Post va teglar yangilandi",
+      newSlug: newSlug // Frontend yangi URLga o'tishi uchun kerak
+    });
   } catch (error) {
     console.error("Update Post Error:", error);
     res.status(500).json({ success: false, message: error.message });
