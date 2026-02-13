@@ -1,11 +1,11 @@
 import pool from '../config/db.js';
 
 // Barcha foydalanuvchilarni olish
-// controllers/admin.controller.js ichida
 export const getAllUsers = async (req, res) => {
     try {
-        // created_at ustunini ham qo'shing
-        const result = await pool.query("SELECT id, full_name, username, phone_number, role, is_blocked, created_at FROM users ORDER BY created_at DESC");
+        const result = await pool.query(
+            "SELECT id, full_name, username, phone_number, role, is_blocked, created_at FROM users ORDER BY created_at DESC"
+        );
         res.json({ success: true, data: result.rows });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -22,11 +22,13 @@ export const deleteUser = async (req, res) => {
             return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
         }
         
-        res.json({ message: "Foydalanuvchi muvaffaqiyatli o'chirildi" });
+        res.json({ success: true, message: "Foydalanuvchi muvaffaqiyatli o'chirildi" });
     } catch (err) {
         res.status(500).json({ error: "O'chirishda xatolik yuz berdi" });
     }
 };
+
+// Statistika olish
 export const getUserStats = async (req, res) => {
     try {
         const statsQuery = `
@@ -41,6 +43,8 @@ export const getUserStats = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Foydalanuvchini bloklash / Blokdan chiqarish
 export const toggleBlockUser = async (req, res) => {
     const { id } = req.params;
     const { is_blocked } = req.body;
@@ -55,10 +59,23 @@ export const toggleBlockUser = async (req, res) => {
             return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
         }
 
+        const user = result.rows[0];
+
+        // --- SOCKET.IO INTEGRATSIYASI ---
+        const io = req.app.get('socketio'); // Server.js dagi socket obyektini olamiz
+        if (io) {
+            if (is_blocked) {
+                // Foydalanuvchi bloklansa, unga "saytdan chiq" degan buyruq yuboramiz
+                io.emit(`user_blocked_${id}`, { message: "Siz bloklandingiz!" });
+            }
+            // Dashboard statistikasini yangilash uchun xabar
+            io.emit('stats_updated');
+        }
+
         res.json({ 
             success: true, 
             message: is_blocked ? "Foydalanuvchi bloklandi" : "Blokdan chiqarildi",
-            data: result.rows[0] 
+            data: user 
         });
     } catch (error) {
         res.status(500).json({ message: "Serverda xatolik", error: error.message });

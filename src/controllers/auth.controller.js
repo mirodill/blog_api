@@ -2,13 +2,12 @@
 import pool from '../config/db.js'; 
 import jwt from 'jsonwebtoken';
 
-// 2. OTP kodini tekshirish va Login qilish
-// "exports.verifyOtp" emas, "export const verifyOtp" ishlatamiz
+// 1. OTP orqali kirishda tekshirish
 export const verifyOtp = async (req, res) => {
-    const { code } = req.body; // Faqat kod keladi
+    const { code } = req.body;
 
     try {
-        // Bazadan kod bo'yicha foydalanuvchini topish
+        // 1. Kodni tekshirish
         const result = await pool.query(
             `SELECT * FROM users WHERE otp_code = $1 AND otp_expires_at > NOW()`,
             [code]
@@ -20,13 +19,29 @@ export const verifyOtp = async (req, res) => {
 
         const user = result.rows[0];
 
-        // Kod ishlatilgandan keyin uni bazada tozalash (xavfsizlik uchun)
+        // 2. Bloklanganligini tekshirish
+        if (user.is_blocked) {
+            return res.status(403).json({ error: "Hisobingiz bloklangan!" });
+        }
+
+        // 3. Bazaga yozish: OTPni o'chirish va oxirgi kirish vaqtini yangilash
         await pool.query(
-            `UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE id = $1`,
+            `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, last_login = NOW() WHERE id = $1`,
             [user.id]
         );
 
-        // JWT Token yaratish
+        // 4. DASHBOARDGA NOTIFICATION YUBORISH (Socket.io)
+        const io = req.app.get('socketio');
+        if (io) {
+            io.emit('user_login_success', {
+                id: user.id,
+                full_name: user.full_name,
+                phone: user.phone_number,
+                time: new Date()
+            });
+        }
+
+        // 5. Token yaratish
         const token = jwt.sign(
             { id: user.id, role: user.role },
             process.env.JWT_SECRET,
@@ -39,9 +54,7 @@ export const verifyOtp = async (req, res) => {
             user: {
                 id: user.id,
                 full_name: user.full_name,
-                phone: user.phone_number,
-                role: user.role,
-                avatar: user.avatar
+                role: user.role
             }
         });
     } catch (err) {
@@ -50,50 +63,62 @@ export const verifyOtp = async (req, res) => {
     }
 };
 
-// 3. Foydalanuvchi profilini olish
-export const getMe = async (req, res) => {
-    try {
-        const user = await pool.query(
-            "SELECT id, full_name, username, role, avatar FROM users WHERE id = $1",
-            [req.user.id] // Bu ID authMiddleware (protect) orqali keladi
-        );
-        
-        if (user.rows.length === 0) return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
-
-        res.json({
-            success: true,
-            user: user.rows[0] // Ism, username va avatar shu yerda qaytadi
-        });
-    } catch (err) {
-        res.status(500).json({ error: "Server xatosi" });
-    }
-};
-// src/controllers/auth.controller.js (yoki login qismi)
+// 2. Email/Parol orqali kirishda tekshirish
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // 1. Foydalanuvchini email bo'yicha topish
         const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
         const user = result.rows[0];
 
         if (!user) return res.status(401).json({ message: "Email yoki parol xato" });
 
-        // 2. Parolni tekshirish (bcrypt bilan)
+        // --- BLOKLANGANLIKNI TEKSHIRISH ---
+        if (user.is_blocked) {
+            return res.status(403).json({ 
+                message: "Hisobingiz bloklangan! Iltimos, admin bilan bog'laning." 
+            });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(401).json({ message: "Email yoki parol xato" });
 
-        // 3. LAST_LOGINni yangilash (ASOSIY QISM)
-        await pool.query(
-            "UPDATE users SET last_login = NOW() WHERE id = $1",
-            [user.id]
-        );
+        await pool.query("UPDATE users SET last_login = NOW() WHERE id = $1", [user.id]);
 
-        // 4. Token yaratish va yuborish
         const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
         res.json({ success: true, token });
     } catch (error) {
         res.status(500).json({ message: "Server xatosi" });
+    }
+};
+
+// 3. Profilni olishda tekshirish (Real-vaqtda haydash uchun)
+export const getMe = async (req, res) => {
+    try {
+        const userResult = await pool.query(
+            "SELECT id, full_name, username, role, avatar, is_blocked FROM users WHERE id = $1",
+            [req.user.id]
+        );
+        
+        if (userResult.rows.length === 0) return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+
+        const user = userResult.rows[0];
+
+        // --- AGAR ADMIN HOZIR BLOKLAGAN BO'LSA ---
+        if (user.is_blocked) {
+            return res.status(403).json({ 
+                success: false,
+                message: "Hisobingiz bloklandi. Tizimdan chiqarildingiz!",
+                logout: true // Frontend buni ko'rib tokenni o'chirishi uchun
+            });
+        }
+
+        res.json({
+            success: true,
+            user: user
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Server xatosi" });
     }
 };
