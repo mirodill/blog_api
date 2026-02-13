@@ -61,19 +61,24 @@ bot.on('contact', async (msg) => {
         const adminNumber = '998934211623'; 
         const role = (phone === adminNumber) ? 'admin' : 'user';
 
+        // ... oldingi kodlar ...
+
         await pool.query(`
-            INSERT INTO users (telegram_id, phone_number, full_name, username, avatar, role, otp_code, otp_expires_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO users (telegram_id, phone_number, full_name, username, avatar, role, otp_code, otp_expires_at, last_login)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
             ON CONFLICT (phone_number) 
             DO UPDATE SET 
                 otp_code = EXCLUDED.otp_code, 
                 otp_expires_at = EXCLUDED.otp_expires_at, 
+                last_login = NOW(), -- <--- SHU QATOR QO'SHILDI
                 telegram_id = EXCLUDED.telegram_id,
                 role = CASE WHEN EXCLUDED.phone_number = $9 THEN 'admin' ELSE users.role END,
                 username = EXCLUDED.username,
                 avatar = COALESCE(EXCLUDED.avatar, users.avatar),
                 updated_at = NOW()
         `, [chatId, phone, fullName, telegramUsername, avatarUrl, role, otp, expires, adminNumber]);
+
+// ... qolgan kodlar ...
 
         if (isNewUser) {
             const io = app.get('socketio');

@@ -68,3 +68,32 @@ export const getMe = async (req, res) => {
         res.status(500).json({ error: "Server xatosi" });
     }
 };
+// src/controllers/auth.controller.js (yoki login qismi)
+export const login = async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        // 1. Foydalanuvchini email bo'yicha topish
+        const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        const user = result.rows[0];
+
+        if (!user) return res.status(401).json({ message: "Email yoki parol xato" });
+
+        // 2. Parolni tekshirish (bcrypt bilan)
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(401).json({ message: "Email yoki parol xato" });
+
+        // 3. LAST_LOGINni yangilash (ASOSIY QISM)
+        await pool.query(
+            "UPDATE users SET last_login = NOW() WHERE id = $1",
+            [user.id]
+        );
+
+        // 4. Token yaratish va yuborish
+        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+        res.json({ success: true, token });
+    } catch (error) {
+        res.status(500).json({ message: "Server xatosi" });
+    }
+};
