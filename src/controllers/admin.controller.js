@@ -1,14 +1,14 @@
 import pool from '../config/db.js';
 
 // Barcha foydalanuvchilarni olish
+// controllers/admin.controller.js ichida
 export const getAllUsers = async (req, res) => {
     try {
-        const users = await pool.query(
-            "SELECT id, telegram_id, full_name, phone_number, username, role, created_at FROM users ORDER BY created_at DESC"
-        );
-        res.json(users.rows);
+        // created_at ustunini ham qo'shing
+        const result = await pool.query("SELECT id, full_name, username, phone_number, role, is_blocked, created_at FROM users ORDER BY created_at DESC");
+        res.json({ success: true, data: result.rows });
     } catch (err) {
-        res.status(500).json({ error: "Ro'yxatni olishda xatolik" });
+        res.status(500).json({ message: err.message });
     }
 };
 
@@ -39,5 +39,28 @@ export const getUserStats = async (req, res) => {
         res.status(200).json(stats.rows[0]);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};
+export const toggleBlockUser = async (req, res) => {
+    const { id } = req.params;
+    const { is_blocked } = req.body;
+
+    try {
+        const result = await pool.query(
+            "UPDATE users SET is_blocked = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
+            [is_blocked, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+        }
+
+        res.json({ 
+            success: true, 
+            message: is_blocked ? "Foydalanuvchi bloklandi" : "Blokdan chiqarildi",
+            data: result.rows[0] 
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Serverda xatolik", error: error.message });
     }
 };

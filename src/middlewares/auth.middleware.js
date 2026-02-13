@@ -30,3 +30,12 @@ export const authorize = (...roles) => {
         next();
     };
 };
+// auth.middleware.js
+export const adminMiddleware = (req, res, next) => {
+    // req.user verifyToken middleware-dan kelgan bo'lishi kerak
+    if (req.user && req.user.role === 'admin') {
+        next();
+    } else {
+        return res.status(403).json({ message: "Sizda adminlik huquqi yo'q!" });
+    }
+};
