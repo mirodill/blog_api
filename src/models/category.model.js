@@ -23,7 +23,10 @@ class Category {
     const { rows } = await pool.query(query, [id]);
     return rows[0];
   }
-
+static async getBySlug(slug) {
+  const result = await pool.query('SELECT * FROM categories WHERE slug = $1', [slug]);
+  return result.rows[0];
+}
   // 3. UPDATE - Kategoriyani tahrirlash
   static async update(id, name, slug) {
     const query = `

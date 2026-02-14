@@ -26,7 +26,26 @@ export const getAllCategories = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// 5. GET SINGLE BY SLUG (Siz so'ragan funksiya)
+export const getCategoryBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params; // URL'dan 'dasturlash' so'zini oladi
+    
+    // Modeldagi slug orqali topish metodini chaqiramiz
+    const category = await Category.getBySlug(slug); 
 
+    if (!category) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Bunday kategoriya topilmadi" 
+      });
+    }
+
+    res.status(200).json({ success: true, data: category });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 // 3. UPDATE (Qo'shildi)
 export const updateCategory = async (req, res) => {
   try {
