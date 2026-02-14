@@ -126,29 +126,34 @@ class Post {
 
   // 3. READ ALL, GET BY SLUG, GET BY ID, DELETE (O'zgarishsiz qoladi)
   static async getAll(filters = {}) {
-    const { categoryId, tagId } = filters;
-    let queryParams = [];
-    let whereClauses = ['p.deleted_at IS NULL'];
-    if (categoryId) { queryParams.push(categoryId); whereClauses.push(`pc.category_id = $${queryParams.length}`); }
-    if (tagId) { queryParams.push(tagId); whereClauses.push(`pt.tag_id = $${queryParams.length}`); }
+  const { categoryId, tagId } = filters;
+  let queryParams = [];
+  let whereClauses = ['p.deleted_at IS NULL'];
+  if (categoryId) { queryParams.push(categoryId); whereClauses.push(`pc.category_id = $${queryParams.length}`); }
+  if (tagId) { queryParams.push(tagId); whereClauses.push(`pt.tag_id = $${queryParams.length}`); }
 
-    const query = `
-      SELECT p.*, 
-        json_agg(DISTINCT c.name) as categories, 
-        json_agg(DISTINCT t.name) as tags,
-        u.full_name as author_name, u.avatar as author_avatar
-      FROM posts p
-      LEFT JOIN post_categories pc ON p.id = pc.post_id
-      LEFT JOIN categories c ON pc.category_id = c.id
-      LEFT JOIN post_tags pt ON p.id = pt.post_id
-      LEFT JOIN tags t ON pt.tag_id = t.id
-      LEFT JOIN users u ON p.author_id = u.id
-      WHERE ${whereClauses.join(' AND ')}
-      GROUP BY p.id, u.full_name, u.avatar
-      ORDER BY p.created_at DESC`;
-    const { rows } = await pool.query(query, queryParams);
-    return rows;
-  }
+  const query = `
+    SELECT p.*, 
+      -- Bu yerda kategoriyalarni ob'ektlar massivi sifatida olamiz (id, name, slug)
+      COALESCE(
+        json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'slug', c.slug)) 
+        FILTER (WHERE c.id IS NOT NULL), '[]'
+      ) as categories, 
+      json_agg(DISTINCT t.name) as tags,
+      u.full_name as author_name, u.avatar as author_avatar
+    FROM posts p
+    LEFT JOIN post_categories pc ON p.id = pc.post_id
+    LEFT JOIN categories c ON pc.category_id = c.id
+    LEFT JOIN post_tags pt ON p.id = pt.post_id
+    LEFT JOIN tags t ON pt.tag_id = t.id
+    LEFT JOIN users u ON p.author_id = u.id
+    WHERE ${whereClauses.join(' AND ')}
+    GROUP BY p.id, u.full_name, u.avatar
+    ORDER BY p.created_at DESC`;
+    
+  const { rows } = await pool.query(query, queryParams);
+  return rows;
+}
 
   static async getBySlug(slug) {
     const query = `
