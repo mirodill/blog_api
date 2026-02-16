@@ -11,6 +11,7 @@ import postRoutes from './routes/post.routes.js';
 import tagRoutes from './routes/tag.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import interactionRoutes from './routes/interaction.routes.js';
 import './bot/telegramBot.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +67,6 @@ app.use('/api/v1/posts', postRoutes);
 app.use('/api/v1/tags', tagRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/admin', adminRoutes);
-
+app.use('/api/interactions', interactionRoutes);
 // httpServer va io ni eksport qilamiz
 export { app, httpServer, io };
