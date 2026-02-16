@@ -67,6 +67,6 @@ app.use('/api/v1/posts', postRoutes);
 app.use('/api/v1/tags', tagRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/admin', adminRoutes);
-app.use('/api/interactions', interactionRoutes);
+app.use('/api/v1/interactions', interactionRoutes);
 // httpServer va io ni eksport qilamiz
 export { app, httpServer, io };
