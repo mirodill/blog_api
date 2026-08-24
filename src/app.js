@@ -7,17 +7,27 @@ import { fileURLToPath } from 'url';
 
 // Route-lar
 import authRoutes from './routes/auth.routes.js'; 
-import postRoutes from './routes/post.routes.js';
+import projectRoutes from './routes/project.routes.js';
 import tagRoutes from './routes/tag.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import interactionRoutes from './routes/interaction.routes.js';
+import experienceRoutes from './routes/experience.routes.js';
+import contactRoutes from './routes/contact.routes.js';
 import './bot/telegramBot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'Blog API ishlayapti' });
+});
+
+app.get('/api/v1/health', (req, res) => {
+  res.json({ success: true, message: 'OK' });
+});
 
 // 1. HTTP server va Socket.io ni sozlash
 const httpServer = createServer(app);
@@ -63,10 +73,12 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // 5. API yo'nalishlari
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/posts', postRoutes);
+app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/tags', tagRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/interactions', interactionRoutes);
+app.use('/api/v1/experiences', experienceRoutes);
+app.use('/api/v1/contact', contactRoutes);
 // httpServer va io ni eksport qilamiz
 export { app, httpServer, io };

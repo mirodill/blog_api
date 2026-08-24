@@ -1,6 +1,7 @@
 // 1. Importlarni ESM formatiga o'tkazamiz
 import pool from '../config/db.js'; 
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 // 1. OTP orqali kirishda tekshirish
 export const verifyOtp = async (req, res) => {

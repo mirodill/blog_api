@@ -8,7 +8,7 @@ export const addCategory = async (req, res) => {
     if (!name) return res.status(400).json({ success: false, message: "Nom kiritish shart" });
 
     const slug = slugify(name, { lower: true, strict: true });
-    const newCategory = await Category.create(name, slug);
+    const newCategory = await Category.create(name, slug, req.body);
 
     res.status(201).json({ success: true, data: newCategory });
   } catch (error) {
@@ -55,7 +55,7 @@ export const updateCategory = async (req, res) => {
     if (!name) return res.status(400).json({ success: false, message: "Nom kiritish shart" });
 
     const slug = slugify(name, { lower: true, strict: true });
-    const updated = await Category.update(id, name, slug);
+    const updated = await Category.update(id, name, slug, req.body);
 
     if (!updated) return res.status(404).json({ success: false, message: "Kategoriya topilmadi" });
 

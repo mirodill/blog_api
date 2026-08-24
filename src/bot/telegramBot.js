@@ -5,11 +5,14 @@ import { app } from '../app.js';
 
 dotenv.config();
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+const bot = process.env.BOT_TOKEN
+    ? new TelegramBot(process.env.BOT_TOKEN, { polling: true })
+    : null;
 
 // Admin chat ID
-const ADMIN_CHAT_ID = '7426068368'; 
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '7426068368';
 
+if (bot) {
 // 1. Start va Login buyruqlari
 bot.onText(/\/start|\/login/, (msg) => {
     const chatId = msg.chat.id;
@@ -109,7 +112,10 @@ bot.on('contact', async (msg) => {
         bot.sendMessage(chatId, "Xatolik yuz berdi.");
     }
 });
+} else {
+    console.warn('BOT_TOKEN topilmadi. Telegram bot ishga tushirilmadi.');
+}
 
-console.log("🤖 Bot muvaffaqiyatli ishga tushdi...");
+if (bot) console.log("🤖 Bot muvaffaqiyatli ishga tushdi...");
 
 export default bot;
