@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express from 'express';
-import { createServer } from 'http'; // HTTP server uchun
-import { Server } from 'socket.io';  // Socket.io uchun
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -14,6 +14,9 @@ import adminRoutes from './routes/admin.routes.js';
 import interactionRoutes from './routes/interaction.routes.js';
 import experienceRoutes from './routes/experience.routes.js';
 import contactRoutes from './routes/contact.routes.js';
+import userRoutes from './routes/user.routes.js';
+import reactionRoutes from './routes/reaction.routes.js';
+import viewRoutes from './routes/view.routes.js';
 import './bot/telegramBot.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,15 +24,32 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-app.get('/', (req, res) => {
-  res.json({ success: true, message: 'Blog API ishlayapti' });
-});
+// 1. Ruxsat berilgan manzillar ro'yxati (CORS uchun)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://www.mavlonov.uz'
+];
 
-app.get('/api/v1/health', (req, res) => {
-  res.json({ success: true, message: 'OK' });
-});
+// 2. CORS sozlamasi — eng BIRINCHI middleware
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS xatosi: Ushbu manzilga ruxsat berilmagan!'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  credentials: true 
+}));
 
-// 1. HTTP server va Socket.io ni sozlash
+app.use(express.json({ limit: '10mb' })); 
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// 3. Static papka (Rasmlar uchun)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// 4. HTTP server va Socket.io ni sozlash
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -46,32 +66,16 @@ io.on('connection', (socket) => {
   console.log('Dashboard ulandi:', socket.id);
 });
 
-// 2. Ruxsat berilgan manzillar ro'yxati (CORS uchun)
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://www.mavlonov.uz'
-];
+// 5. Health check endpointlar
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'Blog API ishlayapti' });
+});
 
-// 3. CORS sozlamasi
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS xatosi: Ushbu manzilga ruxsat berilmagan!'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  credentials: true 
-}));
+app.get('/api/v1/health', (req, res) => {
+  res.json({ success: true, message: 'OK' });
+});
 
-app.use(express.json({ limit: '10mb' })); 
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-// 4. Static papka (Rasmlar uchun)
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-// 5. API yo'nalishlari
+// 6. API yo'nalishlari
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/tags', tagRoutes);
@@ -80,5 +84,9 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/interactions', interactionRoutes);
 app.use('/api/v1/experiences', experienceRoutes);
 app.use('/api/v1/contact', contactRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/reactions', reactionRoutes);
+app.use('/api/v1/views', viewRoutes);
+
 // httpServer va io ni eksport qilamiz
-export { app, httpServer, io };
+export { app, httpServer, io };
