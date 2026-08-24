@@ -33,7 +33,7 @@ app.get('/api/v1/health', (req, res) => {
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'https://mirodill.github.io'],
+    origin: ['http://localhost:5173', 'https://www.mavlonov.uz'],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
 // 2. Ruxsat berilgan manzillar ro'yxati (CORS uchun)
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://mirodill.github.io'
+  'https://www.mavlonov.uz'
 ];
 
 // 3. CORS sozlamasi
